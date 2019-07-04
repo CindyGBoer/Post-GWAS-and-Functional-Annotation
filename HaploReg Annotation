@@ -1,0 +1,118 @@
+#--------------------------------------------------#
+#                 HaploReg Annotation              #
+#                     Version 1.0                  #
+#--------------------------------------------------#
+# 
+# Cindy G. Boer 
+# Making Post GWAs-analysis more and more relaxed
+# 
+#--------------------------------------------------#
+#                   Dependencies                   #
+#--------------------------------------------------#
+#install.packages("haploR", dependencies = TRUE)
+library(haploR)
+
+#--------------------------------------------------#
+#                   Functions                      #
+#--------------------------------------------------#
+### Haploreg search function 
+haploQuery <- function(query){
+  tryCatch(
+  queryHaploreg(query, 
+                ldThresh = 0.6,
+                ldPop = "EUR", 
+                epi = "vanilla", 
+                cons = "siphy", 
+                genetypes = "refseq",
+                url = "https://pubs.broadinstitute.org/mammals/haploreg/haploreg.php",
+                timeout = 10, 
+                encoding = "UTF-8", 
+                verbose = FALSE
+    )
+  , error = function(e){})  
+}
+
+### Extracting Data I want from HaploReg
+HaploData <- function(haplo){
+  if(length(haplo)!=0){
+    subset.coding <- haplo[(haplo$dbSNP_functional_annotation == "SYN") | (haplo$dbSNP_functional_annotation == "U5") | (haplo$dbSNP_functional_annotation == "U3") | 
+                             (haplo$dbSNP_functional_annotation == "NSM"), c("rsID", "dbSNP_functional_annotation", "r2", "RefSeq_name")]
+    
+    if(nrow(subset.coding)!=0){
+      y1 = matrix((toString(as.vector(subset.coding$rsID))), nrow=1, ncol=1, dimnames = list ("1", "Coding_SNP"))
+      y2 = matrix((toString(as.vector(subset.coding$dbSNP_functional_annotation))), nrow=1, ncol=1, dimnames = list ("1", "Func_SNP"))
+      y3 = matrix((toString(as.vector(subset.coding$r2))), nrow=1, ncol=1, dimnames = list ("1", "LD_SNP"))
+      y4 = matrix((toString(as.vector(subset.coding$RefSeq_name))), nrow=1, ncol=1, dimnames = list ("1", "Coding_Gene"))
+      
+      f1 = matrix((toString(as.vector(haplo[which(haplo$is_query_snp ==1),"AFR"]))), nrow=1, ncol=1, dimnames = list ("1", "AFR"))
+      f2 = matrix((toString(as.vector(haplo[which(haplo$is_query_snp ==1),"AMR"]))), nrow=1, ncol=1, dimnames = list ("1", "AMR"))
+      f3 = matrix((toString(as.vector(haplo[which(haplo$is_query_snp ==1),"ASN"]))), nrow=1, ncol=1, dimnames = list ("1", "ASN"))
+      f4 = matrix((toString(as.vector(haplo[which(haplo$is_query_snp ==1),"EUR"]))), nrow=1, ncol=1, dimnames = list ("1", "EUR"))
+      
+      data.frame(y1, f1, f2, f3, f4, y2, y3, y4)
+      
+      } else {
+        y1 = matrix(("."), nrow=1, ncol=1, dimnames = list ("1", "Coding_SNP"))
+        y2 = matrix(("."), nrow=1, ncol=1, dimnames = list ("1", "Func_SNP"))
+        y3 = matrix(("."), nrow=1, ncol=1, dimnames = list ("1", "LD_SNP"))
+        y4 = matrix(("."), nrow=1, ncol=1, dimnames = list ("1", "Coding_Gene"))
+        
+        f1 = matrix((toString(as.vector(haplo[which(haplo$is_query_snp ==1),"AFR"]))), nrow=1, ncol=1, dimnames = list ("1", "AFR"))
+        f2 = matrix((toString(as.vector(haplo[which(haplo$is_query_snp ==1),"AMR"]))), nrow=1, ncol=1, dimnames = list ("1", "AMR"))
+        f3 = matrix((toString(as.vector(haplo[which(haplo$is_query_snp ==1),"ASN"]))), nrow=1, ncol=1, dimnames = list ("1", "ASN"))
+        f4 = matrix((toString(as.vector(haplo[which(haplo$is_query_snp ==1),"EUR"]))), nrow=1, ncol=1, dimnames = list ("1", "EUR"))
+        
+        data.frame(y1, f1, f2, f3, f4, y2, y3, y4)
+        
+      }
+  } else {
+    y1 = matrix(("."), nrow=1, ncol=1, dimnames = list ("1", "Coding_SNP"))
+    y2 = matrix(("."), nrow=1, ncol=1, dimnames = list ("1", "Func_SNP"))
+    y3 = matrix(("."), nrow=1, ncol=1, dimnames = list ("1", "LD_SNP"))
+    y4 = matrix(("."), nrow=1, ncol=1, dimnames = list ("1", "Coding_Gene"))
+    
+    f1 = matrix((toString(as.vector(haplo[which(haplo$is_query_snp ==1),"AFR"]))), nrow=1, ncol=1, dimnames = list ("1", "AFR"))
+    f2 = matrix((toString(as.vector(haplo[which(haplo$is_query_snp ==1),"AMR"]))), nrow=1, ncol=1, dimnames = list ("1", "AMR"))
+    f3 = matrix((toString(as.vector(haplo[which(haplo$is_query_snp ==1),"ASN"]))), nrow=1, ncol=1, dimnames = list ("1", "ASN"))
+    f4 = matrix((toString(as.vector(haplo[which(haplo$is_query_snp ==1),"EUR"]))), nrow=1, ncol=1, dimnames = list ("1", "EUR"))
+    
+    data.frame(y1, f1, f2, f3, f4, y2, y3, y4)
+    
+    }
+}
+
+#-----------------------------------------------------#
+#                    SNP data                         #
+#-----------------------------------------------------#
+# File with 1ste column: rsid's, no header
+snp <- read.table("SNP_List.txt", header = FALSE, stringsAsFactors = FALSE)
+names(snp)[1] <- "rsID"
+
+#-----------------------------------------------------#
+#                    haploReg Loop                    #
+#-----------------------------------------------------#
+### Running HaploReg search for all SNPs in SNP_file.txt, 
+### and retriving requested data
+
+hap.coding.df = NULL
+for (i in 1:nrow(snp)){
+  
+  x      <- haploQuery(snp$rsID[i]) 
+  y0     <- matrix(as.character(snp$rsID[i]), nrow=1, ncol=1, dimnames = list ("1", "rsID"))
+  y1     <- HaploData(x)
+  
+  hap.coding.df = rbind(hap.coding.df, data.frame(y0,y1))
+}
+
+## Make MAF instead of Alt Allele Frequancy 
+hap.coding.df$AFR[hap.coding.df$AFR > 0.5] <- 1-hap.coding.df$AFR
+hap.coding.df$AMR[hap.coding.df$AMR > 0.5] <- 1-hap.coding.df$AMR
+hap.coding.df$ASN[hap.coding.df$ASN > 0.5] <- 1-hap.coding.df$ASN
+hap.coding.df$EUR[hap.coding.df$EUR > 0.5] <- 1-hap.coding.df$EUR
+
+### Inspect File
+head(hap.coding.df)
+
+#-----------------------------------------------------#
+### Saving
+write.table(hap.coding.df, "Func_coding_SNPs_LD.txt", quote=F, row.names=F, sep = "\t")
